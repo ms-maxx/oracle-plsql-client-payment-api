@@ -81,6 +81,58 @@ begin
 end;
 /
 
+--Проверка функционала по глобальному отключению проверок. Операция удаления клиента
+declare
+  v_client_id client.client_id%type := -1;
+begin
+  common_pack.enable_client_manual_changes();
+  delete from client c where c.client_id = v_client_id;
+  common_pack.disable_client_manual_changes();
+exception
+  when others then
+    common_pack.disable_client_manual_changes();
+    raise;
+end;
+/
+
+--Проверка функционала по глобальному отключению проверок. Операция обновления клиента
+declare
+  v_client_id client.client_id%type := 21;
+begin
+  common_pack.enable_client_manual_changes();
+
+  update client c
+     set c.is_blocked = c.is_blocked
+   where c.client_id = v_client_id;
+
+  common_pack.disable_client_manual_changes();
+exception
+  when others then
+    common_pack.disable_client_manual_changes();
+    raise;
+end;
+/
+
+--Проверка функционала по глобальному отключению проверок. Операция обновления данных клиента
+declare
+  v_client_id client.client_id%type := 21;
+  v_field_id client_data.field_id%type := 1;
+begin
+  common_pack.enable_client_manual_changes();
+
+  update client_data c
+     set c.field_value = c.field_value
+   where c.client_id = v_client_id
+   and c.field_id = v_field_id;
+
+  common_pack.disable_client_manual_changes();
+exception
+  when others then
+    common_pack.disable_client_manual_changes();
+    raise;
+end;
+/  
+  
 /*============================*/
 
 -- Негативные Unit-tests
@@ -94,7 +146,7 @@ begin
   
   raise_application_error(-20999, 'Unit-test или API выполнены неверно');
 exception 
- when client_api_pack.e_invalid_input_parameter then 
+ when common_pack.e_invalid_input_parameter then 
     dbms_output.put_line('Cоздания клиента. Исключение возбуждено успешно. Ошибка: '|| sqlerrm);
 end;
 /
@@ -108,7 +160,7 @@ begin
                                p_reason    => v_reason);
   raise_application_error(-20999, 'Unit-test или API выполнены неверно');
 exception 
-  when client_api_pack.e_invalid_input_parameter then 
+  when common_pack.e_invalid_input_parameter then 
     dbms_output.put_line('Блокировка клиента. Исключение возбуждено успешно. Ошибка: '|| sqlerrm);
 end;
 /
@@ -120,7 +172,7 @@ begin
   client_api_pack.unblock_client(p_client_id => v_client_id);
   raise_application_error(-20999, 'Unit-test или API выполнены неверно');
 exception 
-  when client_api_pack.e_invalid_input_parameter then 
+  when common_pack.e_invalid_input_parameter then 
      dbms_output.put_line('Разблокировка клиента. Исключение возбуждено успешно. Ошибка: '|| sqlerrm);
 end;
 /
@@ -132,7 +184,7 @@ begin
   client_api_pack.deactivate_client(p_client_id => v_client_id);
   raise_application_error(-20999, 'Unit-test или API выполнены неверно');
 exception 
-  when client_api_pack.e_invalid_input_parameter then 
+  when common_pack.e_invalid_input_parameter then 
      dbms_output.put_line('Деактивация клиента. Исключение возбуждено успешно. Ошибка: '|| sqlerrm);
 end;
 / 
@@ -147,7 +199,7 @@ begin
                                                     p_client_data => v_client_data);
   raise_application_error(-20999, 'Unit-test или API выполнены неверно');
 exception 
-  when client_data_api_pack.e_invalid_input_parameter then 
+  when common_pack.e_invalid_input_parameter then 
      dbms_output.put_line('Добавление/Изменение клиентских данных. Исключение возбуждено успешно. Ошибка: '|| sqlerrm);
 end;
 /
@@ -161,7 +213,7 @@ begin
                                           p_delete_field_ids => v_delete_field_ids);
   raise_application_error(-20999, 'Unit-test или API выполнены неверно');
 exception 
-  when client_data_api_pack.e_invalid_input_parameter then 
+  when common_pack.e_invalid_input_parameter then 
      dbms_output.put_line('Удаление клиентских данных. Исключение возбуждено успешно. Ошибка: '|| sqlerrm);
 end;
 /
@@ -175,7 +227,7 @@ begin
   delete from client t where t.client_id = v_client_id;
   raise_application_error(-20999, 'Unit-test или API выполнены неверно');
 exception 
-  when client_api_pack.e_delete_forbidden then 
+  when common_pack.e_delete_forbidden then 
      dbms_output.put_line('Удаление клиента. Исключение возбуждено успешно. Ошибка: '|| sqlerrm);
 end;
 /
@@ -192,7 +244,7 @@ begin
   
   raise_application_error(-20999, 'Unit-test или API выполнены неверно');
 exception 
-  when client_api_pack.e_manual_changes then 
+  when common_pack.e_manual_changes then 
      dbms_output.put_line('Вставка в таблицу client не через API. Исключение возбуждено успешно. Ошибка: '|| sqlerrm);
 end;
 /
@@ -208,7 +260,7 @@ begin
   raise_application_error(-20999,
                           'Unit-test или API выполнены неверно');
 exception
-  when client_api_pack.e_manual_changes then
+  when common_pack.e_manual_changes then
     dbms_output.put_line('Обновление таблицы client не через API. Исключение возбуждено успешно. Ошибка: ' ||
                          sqlerrm);
 end;
@@ -224,7 +276,7 @@ begin
   
   raise_application_error(-20999, 'Unit-test или API выполнены неверно');
 exception 
-  when client_data_api_pack.e_invalid_manual_changes then 
+  when common_pack.e_manual_changes then 
      dbms_output.put_line('Вставка в таблицу client_data не через API. Исключение возбуждено успешно. Ошибка: '|| sqlerrm);
 end;
 /
@@ -240,7 +292,7 @@ begin
   
   raise_application_error(-20999, 'Unit-test или API выполнены неверно');
 exception 
-  when client_data_api_pack.e_invalid_manual_changes then 
+  when common_pack.e_manual_changes then 
      dbms_output.put_line('Обновление таблицы client_data не через API. Исключение возбуждено успешно. Ошибка: '|| sqlerrm);
 end;
 /
@@ -254,7 +306,7 @@ begin
                                           
   raise_application_error(-20999, 'Unit-test или API выполнены неверно');
 exception 
-  when client_data_api_pack.e_invalid_manual_changes then 
+  when common_pack.e_manual_changes then 
      dbms_output.put_line('Удаление из таблицы client_data не через API. Исключение возбуждено успешно. Ошибка: '|| sqlerrm);
 end;
-/ 
+/   

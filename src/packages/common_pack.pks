@@ -1,7 +1,7 @@
 create or replace package common_pack is
   /*
     Автор: Verbitskiy M.S
-    Описание скрипта: Общие объекты и константы для сущности Клиент
+    Описание скрипта: Общие объекты и константы для сущности Client/Payment
   */
 
   -- Сообщения ошибок
@@ -35,8 +35,15 @@ create or replace package common_pack is
   procedure enable_client_manual_changes;
   procedure disable_client_manual_changes;
   
-  -- Разрешены ли ручные изменения на глобальном уровне
+  -- Разрешены ли ручные изменения на глобальном уровне, для сущности client
   function is_client_manual_changes_allowed return boolean; 
   
+  -- Включение/отключение разрешения менять вручную данные объектов "PAYMENT"
+  procedure enable_payment_manual_changes;
+  procedure disable_payment_manual_changes;
+  
+  -- Разрешены ли ручные изменения на глобальном уровне, для сущности payment 
+  function is_payment_manual_changes_allowed return boolean;
+
 end common_pack;
 /

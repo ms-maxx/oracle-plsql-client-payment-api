@@ -12,7 +12,7 @@ create or replace package client_data_api_pack is
   procedure delete_client_data(p_client_id        in client.client_id%type,
                                p_delete_field_ids in t_number_array);
   
-  --Проверка, вызываемая из триггера                             
+  --Проверка, вызоваемая из триггера                             
   procedure client_data_changes_through_api;
 
 end client_data_api_pack;

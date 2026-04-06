@@ -57,6 +57,8 @@ create or replace package body client_api_pack is
       raise_application_error(common_pack.c_error_code_invalid_input_parameter,
                               common_pack.c_error_msg_empty_reason);
     end if;
+    
+    try_lock_client(p_client_id => p_client_id); -- Пытаемся заблокировать клиента.
   
     allow_changes();
   
@@ -82,6 +84,8 @@ create or replace package body client_api_pack is
       raise_application_error(common_pack.c_error_code_invalid_input_parameter,
                               common_pack.c_error_msg_empty_object_id);
     end if;
+    
+    try_lock_client(p_client_id => p_client_id); -- Пытаемся заблокировать клиента.
   
     allow_changes();
   
@@ -107,6 +111,8 @@ create or replace package body client_api_pack is
       raise_application_error(common_pack.c_error_code_invalid_input_parameter,
                               common_pack.c_error_msg_empty_object_id);
     end if;
+    
+    try_lock_client(p_client_id => p_client_id); -- Пытаемся заблокировать клиента.
   
     allow_changes();
   
@@ -128,7 +134,7 @@ create or replace package body client_api_pack is
   procedure client_changes_through_api is
   begin
     if not g_is_api and not common_pack.is_client_manual_changes_allowed() then
-      raise_application_error(common_pack.c_error_code_invalid_manual_changes,
+      raise_application_error(common_pack.c_error_code_manual_changes,
                               common_pack.c_error_msg_manual_changes);
     end if;
   end client_changes_through_api;
@@ -136,10 +142,35 @@ create or replace package body client_api_pack is
   procedure check_client_delete_restriction is
   begin
     if not common_pack.is_client_manual_changes_allowed() then
-      raise_application_error(common_pack.c_error_code_invalid_delete_forbidden,
+      raise_application_error(common_pack.c_error_code_delete_forbidden,
                               common_pack.c_error_msg_delete_forbidden);
     end if;
   end check_client_delete_restriction;
+  
+  -- Блокировка клиента для изменения
+  procedure try_lock_client(p_client_id in client.client_id%type) is
+    v_is_active client.is_active%type;
+  begin
+    
+    select t.is_active
+      into v_is_active
+      from client t
+     where t.client_id = p_client_id
+       for update nowait;
+  
+    if v_is_active = c_inactive then
+      raise_application_error(common_pack.c_error_code_inactive_object,
+                              common_pack.c_error_msg_inactive_object);
+    end if;
+  
+  exception
+    when no_data_found then
+      raise_application_error(common_pack.c_error_code_object_notfound,
+                              common_pack.c_error_msg_object_notfound);
+    when common_pack.e_row_locked then
+      raise_application_error(common_pack.c_error_code_object_already_locked,
+                              common_pack.c_error_msg_object_already_locked);
+  end;
 
 end client_api_pack;
 /

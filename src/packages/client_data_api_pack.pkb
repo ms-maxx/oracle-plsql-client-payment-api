@@ -42,6 +42,8 @@ create or replace package body client_data_api_pack is
       raise_application_error(common_pack.c_error_code_invalid_input_parameter,
                               common_pack.c_error_msg_empty_collection);
     end if;
+    
+    client_api_pack.try_lock_client(p_client_id => p_client_id); --Блокируем клиента.
   
     allow_changes();
   
@@ -82,6 +84,8 @@ create or replace package body client_data_api_pack is
       raise_application_error(common_pack.c_error_code_invalid_input_parameter,
                               common_pack.c_error_msg_empty_collection);
     end if;
+    
+    client_api_pack.try_lock_client(p_client_id => p_client_id); --Блокируем клиента.
   
     allow_changes();
   
@@ -102,7 +106,7 @@ create or replace package body client_data_api_pack is
   procedure client_data_changes_through_api is
   begin
     if not g_is_api and not common_pack.is_client_manual_changes_allowed() then
-      raise_application_error(common_pack.c_error_code_invalid_manual_changes,
+      raise_application_error(common_pack.c_error_code_manual_changes,
                               common_pack.c_error_msg_manual_changes);
     end if;
   end client_data_changes_through_api;

@@ -11,7 +11,7 @@ create or replace package payment_api_pack is
   c_status_error  constant payment.status%type := 2;
   c_status_cancel constant payment.status%type := 3;
 
-  --Создание платежа
+  -- Создание платежа
   function create_payment(p_payment_detail in t_payment_detail_array,
                           p_summa          in payment.summa%type,
                           p_from_client_id in payment.from_client_id%type,
@@ -20,16 +20,19 @@ create or replace package payment_api_pack is
                           p_current_dtime  in date := sysdate)
     return payment.payment_id%type;
 
-  --Сброс платежа
+  -- Сброс платежа
   procedure fail_payment(p_payment_id in payment.payment_id%type,
                          p_reason     in payment.status_change_reason%type);
 
-  --Отмена платежа
+  -- Отмена платежа
   procedure cancel_payment(p_payment_id in payment.payment_id%type,
                            p_reason     in payment.status_change_reason%type);
 
-  --Завершение платежа (успешно)
+  -- Завершение платежа (успешно)
   procedure successful_finish_payment(p_payment_id in payment.payment_id%type);
+  
+  -- Блокировка платежа для изменения
+  procedure try_lock_payment(p_payment_id in payment.payment_id%type);
   
   -- Triggers
   

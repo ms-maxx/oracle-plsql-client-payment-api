@@ -34,7 +34,7 @@ end;
 
 -- Проверка "Сброс платежа"
 declare
-  v_payment_id payment.payment_id%type := 45;
+  v_payment_id payment.payment_id%type := 2;
   v_reason     payment.status_change_reason%type := 'test reset payment';
   
   v_create_drtime_tech payment.create_dtime_tech%type;
@@ -82,7 +82,7 @@ begin
   payment_detail_api_pack.insert_or_update_payment_detail(p_payment_id     => v_payment_id,
                                                       p_payment_detail => v_payment_detail);
 end;
-/
+/ 
 
 -- Проверка "Удаление платежа"
 declare
@@ -341,4 +341,36 @@ exception
     dbms_output.put_line('Удаление из таблицы payment_detail не через API. Исключение возбуждено успешно. Ошибка:' ||
                          sqlerrm);
 end;
-/ 
+/  
+
+-- Негативный тест на отсутствие платежа
+declare 
+  v_payment_id payment.payment_id%type := -1;
+  v_reason payment.status_change_reason%type := 'Test cancel';
+begin
+  payment_api_pack.cancel_payment(p_payment_id => v_payment_id,
+                                  p_reason => v_reason);
+  
+  raise_application_error(-20999, 'Unit-test или API выполнены неверно');
+exception
+  when common_pack.e_object_notfound then
+    dbms_output.put_line('Объект не найден. Исключение возбуждено успешно. Ошибка:' ||
+                         sqlerrm);                                  
+end;
+/
+
+-- Негативный тест на работу с неактивным платежом
+declare 
+  v_payment_id payment.payment_id%type := 45;
+  v_reason payment.status_change_reason%type := 'Test cancel';
+begin
+  payment_api_pack.cancel_payment(p_payment_id => v_payment_id,
+                                  p_reason => v_reason);
+  
+  raise_application_error(-20999, 'Unit-test или API выполнены неверно');
+exception
+  when common_pack.e_inactive_object then
+    dbms_output.put_line('Объект в конечном статусе. Исключение возбуждено успешно. Ошибка:' ||
+                         sqlerrm);                                  
+end;
+/

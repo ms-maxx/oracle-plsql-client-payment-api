@@ -25,7 +25,7 @@ end;
 
 --Проверка "Блокировка клиента"
 declare
-  v_client_id client.client_id%type := 46;
+  v_client_id client.client_id%type := 21;
   v_reason    client.blocked_reason%type := 'some reason block';
   v_create_dtime_tech client.create_dtime_tech%type;
   v_update_dtime_tech client.update_dtime_tech%type;
@@ -46,7 +46,7 @@ end;
 
 --Проверка "Разблокировка клиента"
 declare
-  v_client_id client.client_id%type := 46;
+  v_client_id client.client_id%type := 21;
 begin
   client_api_pack.unblock_client(p_client_id => v_client_id);
 end;
@@ -54,7 +54,7 @@ end;
 
 --Проверка "Деактивация клиента"
 declare
-  v_client_id client.client_id%type := 2;
+  v_client_id client.client_id%type := 21;
 begin
   client_api_pack.deactivate_client(p_client_id => v_client_id);
 end;
@@ -62,7 +62,7 @@ end;
 
 --Проверка "Добавление/Изменение клиентских данных"
 declare
-  v_client_id   client.client_id%type := 2;
+  v_client_id   client.client_id%type := 21;
   v_client_data t_client_data_array := t_client_data_array(t_client_data(2, '+38098222900'),
                                                            t_client_data(4, '23.03.2026'));
 begin
@@ -73,7 +73,7 @@ end;
 
 --Проверка "Удаление клиентских данных"
 declare
-  v_client_id        client.client_id%type := 2;
+  v_client_id        client.client_id%type := 21;
   v_delete_field_ids t_number_array := t_number_array(2, 3);
 begin
   client_data_api_pack.delete_client_data(p_client_id        => v_client_id,
@@ -299,7 +299,7 @@ end;
 
 -- Удаление не через API - клиентских данных
 declare
-  v_client_id        client.client_id%type := -1;
+  v_client_id        client.client_id%type := 22;
 begin
   delete client_data c
   where c.client_id = v_client_id;  
@@ -309,4 +309,37 @@ exception
   when common_pack.e_manual_changes then 
      dbms_output.put_line('Удаление из таблицы client_data не через API. Исключение возбуждено успешно. Ошибка: '|| sqlerrm);
 end;
-/   
+/    
+
+-- Негативный тест на отсутствие клиента
+declare
+  v_client_id client.client_id%type := -1;
+  v_reason client.blocked_reason%type := 'test block';
+begin
+  client_api_pack.block_client(p_client_id => v_client_id,
+                               p_reason => v_reason);
+                               
+  raise_application_error(-20999, 'Unit-test или API выполнены неверно');
+exception
+  when common_pack.e_object_notfound then
+    dbms_output.put_line('Объект не найден. Исключение возбуждено успешно. Ошибка: ' ||
+                         sqlerrm);
+end;
+/
+
+-- Негативный тест на работу с неактивным клиентом
+declare
+  v_client_id client.client_id%type := 23;
+  v_reason client.blocked_reason%type := 'test block';
+begin
+  client_api_pack.block_client(p_client_id => v_client_id,
+                               p_reason => v_reason);
+                               
+                               
+  raise_application_error(-20999, 'Unit-test или API выполнены неверно');
+exception
+  when common_pack.e_inactive_object then
+    dbms_output.put_line('Объект в конечном статусе. Исключение возбуждено успешно. Ошибка: ' ||
+                         sqlerrm);
+end;
+/

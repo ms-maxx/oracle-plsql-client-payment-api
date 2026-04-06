@@ -27,6 +27,9 @@ create or replace package client_api_pack is
   -- Деактивация клиента
   procedure deactivate_client(p_client_id in client.client_id%type);
   
+  -- Блокировка клиента для изменения
+  procedure try_lock_client(p_client_id in client.client_id%type);
+  
   -- Triggers
   
   -- Проверка, выполняются ли изменения через API

@@ -2,19 +2,19 @@ create or replace package body payment_detail_api_pack is
 
   g_is_api boolean := false; -- принзак, выполняется ли изменение через API
 
-  --Разрешение на изменение данных
+  -- Разрешение на изменение данных
   procedure allow_changes is
   begin
     g_is_api := true;
   end;
 
-  --Запрет на изменение данных
+  -- Запрет на изменение данных
   procedure disallow_changes is
   begin
     g_is_api := false;
   end;
 
-  --Добавление/обновление данных платежа
+  -- Добавление/обновление данных платежа
   procedure insert_or_update_payment_detail(p_payment_id     in payment.payment_id%type,
                                             p_payment_detail in t_payment_detail_array) is
   Begin
@@ -42,10 +42,12 @@ create or replace package body payment_detail_api_pack is
       raise_application_error(common_pack.c_error_code_invalid_input_parameter,
                               common_pack.c_error_msg_empty_collection);
     end if;
+    
+    payment_api_pack.try_lock_payment(p_payment_id => p_payment_id);
   
     allow_changes();
   
-    --вставка/обновление данных платежа
+    -- вставка/обновление данных платежа
     merge into payment_detail pd
     using (select p_payment_id payment_id,
                   value       (t).field_id        field_id,
@@ -68,7 +70,7 @@ create or replace package body payment_detail_api_pack is
       raise;
   end insert_or_update_payment_detail;
 
-  --Удаление платежа
+  -- Удаление платежа
   procedure delete_payment_detail(p_payment_id            in payment.payment_id%type,
                                   p_delete_payment_detail in t_number_array) is
   Begin
@@ -82,10 +84,12 @@ create or replace package body payment_detail_api_pack is
       raise_application_error(common_pack.c_error_code_invalid_input_parameter,
                               common_pack.c_error_msg_empty_collection);
     end if;
+    
+    payment_api_pack.try_lock_payment(p_payment_id => p_payment_id);
   
     allow_changes();
   
-    --Удаление данных платежа
+    -- Удаление данных платежа
     delete from payment_detail pd
      where pd.payment_id = p_payment_id
        and pd.field_id in
@@ -99,11 +103,11 @@ create or replace package body payment_detail_api_pack is
       raise;
   end delete_payment_detail;
 
-  --Проверка, вызываемая из триггера
+  -- Проверка, вызываемая из триггера
   procedure payment_detail_changes_through_api is
   begin
     if not g_is_api and not common_pack.is_payment_manual_changes_allowed() then
-      raise_application_error(common_pack.c_error_code_invalid_manual_changes,
+      raise_application_error(common_pack.c_error_code_manual_changes,
                               common_pack.c_error_msg_manual_changes);
     end if;
   end;

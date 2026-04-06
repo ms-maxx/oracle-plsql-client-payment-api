@@ -18,6 +18,13 @@ create or replace package payment_api_pack is
   c_error_msg_empty_object_id constant varchar2(100 char) := 'ID объекта не может быть пустым';
   c_error_msg_empty_reason constant varchar2(100 char) := 'Причина не может быть пустой';
   
+  -- Коды ощибок
+  c_error_invalid_input_prmtr constant number(10) := -20102;
+  
+  -- Объекты исключений
+  c_invalid_input_parameter exception;
+  pragma exception_init(c_invalid_input_parameter, -20102);
+  
   
   
   --Создание платежа
@@ -25,7 +32,8 @@ create or replace package payment_api_pack is
                           p_summa          in payment.summa%type,
                           p_from_client_id in payment.from_client_id%type,
                           p_to_client_id   in payment.to_client_id%type,
-                          p_currency_id    in currency.currency_id%type)
+                          p_currency_id    in currency.currency_id%type,
+                          p_current_dtime in date := sysdate)
     return payment.payment_id%type;
 
   --Сброс платежа

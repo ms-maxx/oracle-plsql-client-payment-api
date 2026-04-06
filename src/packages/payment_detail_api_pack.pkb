@@ -8,25 +8,25 @@ create or replace package body payment_detail_api_pack is
   Begin
 
     if p_payment_id is null then
-      dbms_output.put_line(c_error_msg_empty_object_id);
+      raise_application_error(c_error_invalid_input_prmtr, c_error_msg_empty_object_id);
     end if;
 
     if p_payment_detail is not empty then
       for i in p_payment_detail.first .. p_payment_detail.last loop
 
         if (p_payment_detail(i).field_id is null) then
-          dbms_output.put_line(c_error_msg_empty_field_id);
+          raise_application_error(c_error_invalid_input_prmtr, c_error_msg_empty_field_id);
         end if;
 
         if (p_payment_detail(i).field_value is null) then
-          dbms_output.put_line(c_error_msg_empty_field_value);
+          raise_application_error(c_error_invalid_input_prmtr, c_error_msg_empty_field_value);
         end if;
 
         dbms_output.put_line('Field_id: ' || p_payment_detail(i).field_id ||
                              '. Value: ' || p_payment_detail(i).field_value);
       end loop;
     else
-      dbms_output.put_line(c_error_msg_empty_collection);
+      raise_application_error(c_error_invalid_input_prmtr, c_error_msg_empty_collection);
     end if;
 
     dbms_output.put_line(v_massage || '. ID: ' || p_payment_id);
@@ -57,11 +57,11 @@ create or replace package body payment_detail_api_pack is
   Begin
 
     if p_payment_id is null then
-      dbms_output.put_line(c_error_msg_empty_object_id);
+      raise_application_error(c_error_invalid_input_prmtr, c_error_msg_empty_object_id);
     end if;
 
     if p_delete_payment_detail is empty then
-      dbms_output.put_line(c_error_msg_empty_collection);
+      raise_application_error(c_error_invalid_input_prmtr, c_error_msg_empty_collection);
     end if;
 
     dbms_output.put_line(v_massage || '. ID: ' || p_payment_id);

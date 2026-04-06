@@ -10,6 +10,13 @@ create or replace package payment_detail_api_pack is
   c_error_msg_empty_collection constant varchar2(100 char) := 'Коллекция не содержит данных';
   c_error_msg_empty_object_id constant varchar2(100 char) := 'ID объекта не может быть пустым';
   
+  -- Коды ощибок
+  c_error_invalid_input_prmtr constant number(10) := -20102;
+  
+  -- Объекты исключений
+  c_invalid_input_parameter exception;
+  pragma exception_init(c_invalid_input_parameter, -20102);
+  
   
 
   --Добавление/обновление данных платежа

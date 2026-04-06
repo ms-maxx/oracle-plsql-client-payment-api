@@ -5,33 +5,33 @@ create or replace package body payment_api_pack is
                           p_summa          in payment.summa%type,
                           p_from_client_id in payment.from_client_id%type,
                           p_to_client_id   in payment.to_client_id%type,
-                          p_currency_id    in currency.currency_id%type)
+                          p_currency_id    in currency.currency_id%type,
+                          p_current_dtime in date := sysdate)
     return payment.payment_id%type is
     v_payment_id payment.payment_id%type;
     v_massage    varchar2(50) := 'Платеж создан';
-    v_current_dtime date := sysdate;
   Begin
 
     if p_payment_detail is not empty then
       for i in p_payment_detail.first .. p_payment_detail.last loop
 
         if (p_payment_detail(i).field_id is null) then
-          dbms_output.put_line(c_error_msg_empty_field_id);
+          raise_application_error(c_error_invalid_input_prmtr, c_error_msg_empty_field_id);
         end if;
 
         if (p_payment_detail(i).field_value is null) then
-          dbms_output.put_line(c_error_msg_empty_field_value);
+          raise_application_error(c_error_invalid_input_prmtr, c_error_msg_empty_field_value);
         end if;
 
         dbms_output.put_line('Field_id: ' || p_payment_detail(i).field_id ||
                              '. Value: ' || p_payment_detail(i).field_value);
       end loop;
     else
-      dbms_output.put_line(c_error_msg_empty_collection);
+      raise_application_error(c_error_invalid_input_prmtr, c_error_msg_empty_collection);
     end if;
 
     dbms_output.put_line(v_massage || '. Статус: ' || c_status_create);
-    dbms_output.put_line(to_char(v_current_dtime, 'dd.mm.yyyy hh24:mi:ss'));
+    dbms_output.put_line(to_char(p_current_dtime, 'dd.mm.yyyy hh24:mi:ss'));
 
     --Создание платежа
     insert into payment
@@ -43,7 +43,7 @@ create or replace package body payment_api_pack is
        to_client_id)
     values
       (payment_seq.nextval,
-       v_current_dtime,
+       p_current_dtime,
        p_summa,
        p_currency_id,
        p_from_client_id,
@@ -70,11 +70,11 @@ create or replace package body payment_api_pack is
   Begin
 
     if p_payment_id is null then
-      dbms_output.put_line(c_error_msg_empty_object_id);
+      raise_application_error(c_error_invalid_input_prmtr, c_error_msg_empty_object_id);
     end if;
 
     if p_reason is null then
-      dbms_output.put_line(c_error_msg_empty_reason);
+      raise_application_error(c_error_invalid_input_prmtr, c_error_msg_empty_reason);
     end if;
 
     dbms_output.put_line(v_massage || '. Статус: ' || c_status_error ||
@@ -99,11 +99,11 @@ create or replace package body payment_api_pack is
   Begin
 
     if p_payment_id is null then
-      dbms_output.put_line(c_error_msg_empty_object_id);
+      raise_application_error(c_error_invalid_input_prmtr, c_error_msg_empty_object_id);
     end if;
 
     if p_reason is null then
-      dbms_output.put_line(c_error_msg_empty_reason);
+      raise_application_error(c_error_invalid_input_prmtr, c_error_msg_empty_reason);
     end if;
 
     dbms_output.put_line(v_massage || '. Статус: ' || c_status_cancel ||
@@ -127,7 +127,7 @@ create or replace package body payment_api_pack is
   Begin
 
     if p_payment_id is null then
-      dbms_output.put_line(c_error_msg_empty_object_id);
+      raise_application_error(c_error_invalid_input_prmtr, c_error_msg_empty_object_id);
     end if;
     dbms_output.put_line(v_massage || '. Статус: ' || c_status_success ||
                          '. ID: ' || p_payment_id);

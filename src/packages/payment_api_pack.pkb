@@ -1,38 +1,57 @@
 create or replace package body payment_api_pack is
 
+  g_is_api boolean := false; -- принзак, выполняется ли изменение через API
+
+  --Разрешение на изменение данных
+  procedure allow_changes is
+  begin
+    g_is_api := true;
+  end;
+
+  --Запрет на изменение данных
+  procedure disallow_changes is
+  begin
+    g_is_api := false;
+  end;
+
   --Создание платежа
   function create_payment(p_payment_detail in t_payment_detail_array,
                           p_summa          in payment.summa%type,
                           p_from_client_id in payment.from_client_id%type,
                           p_to_client_id   in payment.to_client_id%type,
                           p_currency_id    in currency.currency_id%type,
-                          p_current_dtime in date := sysdate)
+                          p_current_dtime  in date := sysdate)
     return payment.payment_id%type is
     v_payment_id payment.payment_id%type;
     v_massage    varchar2(50) := 'Платеж создан';
   Begin
-
+  
     if p_payment_detail is not empty then
       for i in p_payment_detail.first .. p_payment_detail.last loop
-
+      
         if (p_payment_detail(i).field_id is null) then
-          raise_application_error(c_error_invalid_input_prmtr, c_error_msg_empty_field_id);
+          raise_application_error(c_error_code_input_parameter,
+                                  c_error_msg_empty_field_id);
         end if;
-
+      
         if (p_payment_detail(i).field_value is null) then
-          raise_application_error(c_error_invalid_input_prmtr, c_error_msg_empty_field_value);
+          raise_application_error(c_error_code_input_parameter,
+                                  c_error_msg_empty_field_value);
         end if;
-
+      
         dbms_output.put_line('Field_id: ' || p_payment_detail(i).field_id ||
                              '. Value: ' || p_payment_detail(i).field_value);
       end loop;
     else
-      raise_application_error(c_error_invalid_input_prmtr, c_error_msg_empty_collection);
+      raise_application_error(c_error_code_input_parameter,
+                              c_error_msg_empty_collection);
     end if;
-
+  
+    allow_changes();
+  
     dbms_output.put_line(v_massage || '. Статус: ' || c_status_create);
     dbms_output.put_line(to_char(p_current_dtime, 'dd.mm.yyyy hh24:mi:ss'));
-
+  
     --Создание платежа
     insert into payment
       (payment_id,
@@ -49,97 +68,139 @@ create or replace package body payment_api_pack is
        p_from_client_id,
        p_to_client_id)
     returning payment_id into v_payment_id;
-
+  
     dbms_output.put_line('Payment id of new payment: ' || v_payment_id);
-
+  
     --Добавление данных платежа
-    insert into payment_detail
-      (payment_id, field_id, field_value)
-      Select v_payment_id,value(t).field_id,value(t).field_value
-        from table(p_payment_detail) t;
-
+    payment_detail_api_pack.insert_or_update_payment_detail(p_payment_id     => v_payment_id,
+                                                            p_payment_detail => p_payment_detail);
+  
+    disallow_changes();
+  
     return v_payment_id;
-
+  
+  exception
+    when others then
+      disallow_changes();
+      raise;
   end create_payment;
 
   --Сброс платежа
   procedure fail_payment(p_payment_id in payment.payment_id%type,
                          p_reason     in payment.status_change_reason%type) is
-    v_massage varchar2(100) := 'Сброс платежа в "ошибочный статус" с указанием причины';
+    v_massage       varchar2(100) := 'Сброс платежа в "ошибочный статус" с указанием причины';
     v_current_dtime timestamp := systimestamp;
   Begin
-
+  
     if p_payment_id is null then
-      raise_application_error(c_error_invalid_input_prmtr, c_error_msg_empty_object_id);
+      raise_application_error(c_error_code_input_parameter,
+                              c_error_msg_empty_object_id);
     end if;
-
+  
     if p_reason is null then
-      raise_application_error(c_error_invalid_input_prmtr, c_error_msg_empty_reason);
+      raise_application_error(c_error_code_input_parameter,
+                              c_error_msg_empty_reason);
     end if;
-
+  
+    allow_changes();
     dbms_output.put_line(v_massage || '. Статус: ' || c_status_error ||
                          '. Причина: ' || p_reason || '. ID: ' ||
                          p_payment_id);
     dbms_output.put_line(to_char(v_current_dtime,
                                  'dd.mm.yyyy hh24:mi:ss.ff'));
-
+  
     --Обновление статуса платежа
     update payment p
        set p.status = c_status_error, p.status_change_reason = p_reason
      where p.payment_id = p_payment_id
        and p.status = c_status_create;
-
+  
+    disallow_changes();
+  
+  exception
+    when others then
+      disallow_changes();
+      raise;
   end fail_payment;
 
   --Отмена платежа
   procedure cancel_payment(p_payment_id in payment.payment_id%type,
                            p_reason     in payment.status_change_reason%type) is
-    v_massage varchar2(100) := 'Отмена платежа с указанием причины';
+    v_massage       varchar2(100) := 'Отмена платежа с указанием причины';
     v_current_dtime timestamp := systimestamp;
   Begin
-
+  
     if p_payment_id is null then
-      raise_application_error(c_error_invalid_input_prmtr, c_error_msg_empty_object_id);
+      raise_application_error(c_error_code_input_parameter,
+                              c_error_msg_empty_object_id);
     end if;
-
+  
     if p_reason is null then
-      raise_application_error(c_error_invalid_input_prmtr, c_error_msg_empty_reason);
+      raise_application_error(c_error_code_input_parameter,
+                              c_error_msg_empty_reason);
     end if;
-
+  
+    allow_changes();
+  
     dbms_output.put_line(v_massage || '. Статус: ' || c_status_cancel ||
                          '. Причина: ' || p_reason || '. ID: ' ||
                          p_payment_id);
     dbms_output.put_line(to_char(v_current_dtime,
                                  'dd.mm.yyyy hh24:mi:ss.ff'));
-
+  
     --Обновление статуса платежа
     update payment p
        set p.status = c_status_cancel, p.status_change_reason = p_reason
      where p.payment_id = p_payment_id
        and p.status = c_status_create;
-
+  
+    disallow_changes();
+  
+  exception
+    when others then
+      disallow_changes();
+      raise;
   end cancel_payment;
 
   --Завершение платежа (успешно)
   procedure successful_finish_payment(p_payment_id in payment.payment_id%type) is
-    v_massage varchar2(100) := 'Успешное завершение платежа';
+    v_massage       varchar2(100) := 'Успешное завершение платежа';
     v_current_dtime date := sysdate;
   Begin
-
+  
     if p_payment_id is null then
-      raise_application_error(c_error_invalid_input_prmtr, c_error_msg_empty_object_id);
+      raise_application_error(c_error_code_input_parameter,
+                              c_error_msg_empty_object_id);
     end if;
+  
+    allow_changes();
+  
     dbms_output.put_line(v_massage || '. Статус: ' || c_status_success ||
                          '. ID: ' || p_payment_id);
     dbms_output.put_line(to_char(v_current_dtime, 'dd.mm.yyyy hh24:mi:ss'));
-
+  
     --Обновление статуса платежа
     update payment p
        set p.status = c_status_success, p.status_change_reason = v_massage
      where p.payment_id = p_payment_id
        and p.status = c_status_create;
-
+  
+    disallow_changes();
+  
+  exception
+    when others then
+      disallow_changes();
+      raise;
   end successful_finish_payment;
+  
+  --Проверка, вызываемая из триггера
+  procedure payment_changes_through_api
+  is
+  begin
+    if not g_is_api then 
+      raise_application_error(c_error_code_manual_changes, c_error_msg_manual_changes);
+    end if;
+  end;
 
 end payment_api_pack;
 /

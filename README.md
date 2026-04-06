@@ -64,3 +64,6 @@ The purpose of this project is to demonstrate an approach to building an API lay
 
 This project is educational and portfolio-oriented.  
 It is intended to show database design and PL/SQL development practices such as API encapsulation, trigger-based protection, status-driven logic, and structured error handling.
+
+Course: Oracle Master PLSQL
+Instructor: Denis Kivilyov, tg: @denis_dbd

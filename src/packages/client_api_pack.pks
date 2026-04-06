@@ -18,6 +18,15 @@ create or replace package client_api_pack is
   c_error_msg_empty_object_id   constant varchar2(100 char) := 'ID объекта не может быть пустым';
   c_error_msg_empty_reason      constant varchar2(100 char) := 'Причина не может быть пустой';
   
+  -- Коды ошибок
+  c_error_invalid_input_prmtr constant number(10) := -20101;
+  
+  -- Объекты исключений
+  e_invalid_input_parameter exception;
+  pragma exception_init(e_invalid_input_parameter, -20101);
+  
+  
+  
   --Создание клиента
   function create_client(p_client_data in t_client_data_array)
     return client.client_id%type;

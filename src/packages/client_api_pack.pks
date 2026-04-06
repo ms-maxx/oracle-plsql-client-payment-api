@@ -17,29 +17,44 @@ create or replace package client_api_pack is
   c_error_msg_empty_collection  constant varchar2(100 char) := 'Коллекция не содержит данных';
   c_error_msg_empty_object_id   constant varchar2(100 char) := 'ID объекта не может быть пустым';
   c_error_msg_empty_reason      constant varchar2(100 char) := 'Причина не может быть пустой';
-  
+  c_error_msg_delete_forbidden  constant varchar2(100 char) := 'Удаление объекта запрещено';
+  c_error_msg_manual_changes    constant varchar2(100 char) := 'Изменения должны выполняться только через API';
+
   -- Коды ошибок
-  c_error_invalid_input_prmtr constant number(10) := -20101;
-  
+  c_error_code_invalid_input_parameter  constant number(10) := -20101;
+  c_error_code_invalid_delete_forbidden constant number(10) := -20102;
+  c_error_code_invalid_manual_changes   constant number(10) := -20103;
+
   -- Объекты исключений
   e_invalid_input_parameter exception;
-  pragma exception_init(e_invalid_input_parameter, -20101);
+  pragma exception_init(e_invalid_input_parameter,
+                        c_error_code_invalid_input_parameter);
+                        
+  e_delete_forbidden exception;
+  pragma exception_init(e_delete_forbidden,
+                        c_error_code_invalid_delete_forbidden);
   
-  
-  
+  e_manual_changes exception;
+  pragma exception_init(e_manual_changes,
+                        c_error_code_invalid_manual_changes);
+                        
+
   --Создание клиента
   function create_client(p_client_data in t_client_data_array)
     return client.client_id%type;
-  
+
   --Блокировка клиента
   procedure block_client(p_client_id in client.client_id%type,
                          p_reason    in client.blocked_reason%type);
-                         
+
   --Разблокировка клиента
   procedure unblock_client(p_client_id in client.client_id%type);
-  
+
   --Деактивация клиента
   procedure deactivate_client(p_client_id in client.client_id%type);
+  
+  --Проверка, вызоваемая из триггера
+  procedure client_changes_through_api;
 
 end client_api_pack;
 /

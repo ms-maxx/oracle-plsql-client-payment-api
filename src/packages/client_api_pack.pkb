@@ -1,5 +1,19 @@
 create or replace package body client_api_pack is
 
+  g_is_api boolean := false; -- принзак, выполняется ли изменение через API
+  
+  --Разрешение на изменение данных
+  procedure allow_changes is 
+  begin
+    g_is_api := true;
+  end;
+  
+  --Запрет на изменение данных
+  procedure disallow_changes is 
+  begin
+    g_is_api := false;
+  end;
+
   --Создание клиента
   function create_client(p_client_data in t_client_data_array)
     return client.client_id%type is
@@ -12,24 +26,26 @@ create or replace package body client_api_pack is
     
       for i in p_client_data.first .. p_client_data.last loop
         if (p_client_data(i).field_id is null) then
-          raise_application_error(c_error_invalid_input_prmtr, c_error_msg_empty_field_id);
+          raise_application_error(c_error_code_invalid_input_parameter, c_error_msg_empty_field_id);
         end if;
       
         if (p_client_data(i).field_value is null) then
-          raise_application_error(c_error_invalid_input_prmtr, c_error_msg_empty_field_value);
+          raise_application_error(c_error_code_invalid_input_parameter, c_error_msg_empty_field_value);
         end if;
       
         dbms_output.put_line('Field_id: ' || p_client_data(i).field_id ||
                              '. Value: ' || p_client_data(i).field_value);
       end loop;
     else
-      raise_application_error(c_error_invalid_input_prmtr, c_error_msg_empty_collection);
+      raise_application_error(c_error_code_invalid_input_parameter, c_error_msg_empty_collection);
     end if;
   
     dbms_output.put_line(v_message || '. Статус: ' || c_active ||
                          '. Блокировка: ' || c_not_blocked);
     dbms_output.put_line(to_char(v_current_dtime, 'dd.mm.yyyy hh24:mi:ss'));
-  
+    
+    
+    allow_changes();
     --Создание клиента
     insert into client
       (client_id, is_active, is_blocked, blocked_reason)
@@ -40,12 +56,17 @@ create or replace package body client_api_pack is
     dbms_output.put_line('Client id of new client: ' || v_client_id);
   
     --Добавление клиентских данных
-    insert into client_data
-      (client_id, field_id, field_value)
-      Select v_client_id,value(t).field_id,value(t).field_value
-        from table(p_client_data) t;
-  
+    client_data_api_pack.insert_or_update_client_data(p_client_id => v_client_id,
+                                                      p_client_data => p_client_data);
+                                                      
+    disallow_changes();
+    
     return v_client_id;
+    
+  exception 
+    when others then 
+      disallow_changes();
+      raise;
   end create_client;
 
   --Блокировка клиента
@@ -56,13 +77,15 @@ create or replace package body client_api_pack is
   begin
   
     if p_client_id is null then
-      raise_application_error(c_error_invalid_input_prmtr, c_error_msg_empty_object_id);
+      raise_application_error(c_error_code_invalid_input_parameter, c_error_msg_empty_object_id);
     end if;
   
     if p_reason is null then
-      raise_application_error(c_error_invalid_input_prmtr, c_error_msg_empty_reason);
+      raise_application_error(c_error_code_invalid_input_parameter, c_error_msg_empty_reason);
     end if;
-  
+    
+    allow_changes(); 
+     
     dbms_output.put_line(v_message || '. Блокировка: ' || c_blocked ||
                          '. Причина: ' || p_reason || '. ID: ' ||
                          p_client_id);
@@ -74,7 +97,13 @@ create or replace package body client_api_pack is
        set c.is_blocked = c_blocked, c.blocked_reason = p_reason
      where c.client_id = p_client_id
        and c.is_active = c_active;
+    
+    disallow_changes();
   
+  exception
+    when others then 
+      disallow_changes();
+      raise;
   end block_client;
 
   --Разблокировка клиента
@@ -84,8 +113,10 @@ create or replace package body client_api_pack is
   begin
   
     if p_client_id is null then
-      raise_application_error(c_error_invalid_input_prmtr, c_error_msg_empty_object_id);
+      raise_application_error(c_error_code_invalid_input_parameter, c_error_msg_empty_object_id);
     end if;
+    
+    allow_changes();
   
     dbms_output.put_line(v_message || '. Блокировка: ' || c_not_blocked ||
                          '. ID: ' || p_client_id);
@@ -97,7 +128,13 @@ create or replace package body client_api_pack is
        set c.is_blocked = c_not_blocked, c.blocked_reason = null
      where c.client_id = p_client_id
        and c.is_active = c_active;
-  
+    
+    disallow_changes(); 
+       
+  exception
+    when others then 
+      disallow_changes();
+      raise;
   end unblock_client;
 
   --Деактивация клиента
@@ -107,8 +144,10 @@ create or replace package body client_api_pack is
   begin
   
     if p_client_id is null then
-      raise_application_error(c_error_invalid_input_prmtr, c_error_msg_empty_object_id);
+      raise_application_error(c_error_code_invalid_input_parameter, c_error_msg_empty_object_id);
     end if;
+    
+    allow_changes();
   
     dbms_output.put_line(v_message || '. Статус активности: ' ||
                          c_inactive || '. ID: ' || p_client_id);
@@ -119,7 +158,23 @@ create or replace package body client_api_pack is
        set c.is_active = c_inactive
      where c.client_id = p_client_id
        and c.is_active = c_active;
+       
+    disallow_changes();
+       
+  exception
+    when others then 
+      disallow_changes();
+      raise;
   end deactivate_client;
+  
+  -- Проверка вызова через API
+  procedure client_changes_through_api
+  is
+  begin
+    if not g_is_api then
+      raise_application_error(c_error_code_invalid_manual_changes,c_error_msg_manual_changes);
+    end if;
+  end client_changes_through_api;
 
 end client_api_pack;
 /

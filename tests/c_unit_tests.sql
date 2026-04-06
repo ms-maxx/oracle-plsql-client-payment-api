@@ -6,26 +6,47 @@ declare
                                                            t_client_data(2, '+3809677722211'),
                                                            t_client_data(3, '0901200888'));
   v_client_id   client.client_id%type;
+  v_create_dtime_tech client.create_dtime_tech%type;
+  v_update_dtime_tech client.update_dtime_tech%type;
 begin
   v_client_id := client_api_pack.create_client(p_client_data => v_client_data);
-
   dbms_output.put_line('Client_id: ' || v_client_id);
+  
+  select t.create_dtime_tech, t.update_dtime_tech
+    into v_create_dtime_tech, v_update_dtime_tech
+    from client t
+   where t.client_id = v_client_id;
+   
+  if (v_create_dtime_tech != v_update_dtime_tech) then 
+    raise_application_error(-20998, 'Технические даты разные!');
+  end if;
 end;
 /
 
 --Проверка "Блокировка клиента"
 declare
-  v_client_id client.client_id%type := 2;
+  v_client_id client.client_id%type := 46;
   v_reason    client.blocked_reason%type := 'some reason block';
+  v_create_dtime_tech client.create_dtime_tech%type;
+  v_update_dtime_tech client.update_dtime_tech%type;
 begin
   client_api_pack.block_client(p_client_id => v_client_id,
                                p_reason    => v_reason);
+  
+  select t.create_dtime_tech, t.update_dtime_tech
+    into v_create_dtime_tech, v_update_dtime_tech
+    from client t
+   where t.client_id = v_client_id;
+   
+  if (v_create_dtime_tech = v_update_dtime_tech) then 
+    raise_application_error(-20998, 'Технические даты равны!');
+  end if;
 end;
 /
 
 --Проверка "Разблокировка клиента"
 declare
-  v_client_id client.client_id%type := 2;
+  v_client_id client.client_id%type := 46;
 begin
   client_api_pack.unblock_client(p_client_id => v_client_id);
 end;
@@ -142,5 +163,98 @@ begin
 exception 
   when client_data_api_pack.e_invalid_input_parameter then 
      dbms_output.put_line('Удаление клиентских данных. Исключение возбуждено успешно. Ошибка: '|| sqlerrm);
+end;
+/
+
+-- Негативные тесты (triggers) client and client_data
+
+--Проверка запрета удаления клиента через delete
+declare
+  v_client_id        client.client_id%type := 41;
+begin
+  delete from client t where t.client_id = v_client_id;
+  raise_application_error(-20999, 'Unit-test или API выполнены неверно');
+exception 
+  when client_api_pack.e_delete_forbidden then 
+     dbms_output.put_line('Удаление клиента. Исключение возбуждено успешно. Ошибка: '|| sqlerrm);
+end;
+/
+
+--Проверка запрета вставки в client не через API
+declare
+  v_client_id        client.client_id%type := 41;
+begin
+  insert into client (client_id,
+                      is_active,
+                      is_blocked,
+                      blocked_reason)
+  values (v_client_id, client_api_pack.c_active, client_api_pack.c_not_blocked, null);
+  
+  raise_application_error(-20999, 'Unit-test или API выполнены неверно');
+exception 
+  when client_api_pack.e_manual_changes then 
+     dbms_output.put_line('Вставка в таблицу client не через API. Исключение возбуждено успешно. Ошибка: '|| sqlerrm);
+end;
+/
+
+--Проверка запрета обновления в client не через API
+declare
+  v_client_id client.client_id%type := 41;
+begin
+  update client c
+     set c.is_blocked = client_api_pack.c_not_blocked
+   where c.client_id = v_client_id;
+
+  raise_application_error(-20999,
+                          'Unit-test или API выполнены неверно');
+exception
+  when client_api_pack.e_manual_changes then
+    dbms_output.put_line('Обновление таблицы client не через API. Исключение возбуждено успешно. Ошибка: ' ||
+                         sqlerrm);
+end;
+/
+
+-- Изменение не через API (добавление) - клиентских данных
+declare
+  v_client_id   client.client_id%type := 30;
+begin
+  
+  insert into client_data (client_id, field_id, field_value)
+  values (v_client_id, 1, '+++');
+  
+  raise_application_error(-20999, 'Unit-test или API выполнены неверно');
+exception 
+  when client_data_api_pack.e_invalid_manual_changes then 
+     dbms_output.put_line('Вставка в таблицу client_data не через API. Исключение возбуждено успешно. Ошибка: '|| sqlerrm);
+end;
+/
+
+-- Изменение не через API (обновление) - клиентских данных
+declare
+  v_client_id   client.client_id%type := 30;
+begin
+  
+  update client_data c 
+  set c.field_value = c.field_value
+  where c.client_id = v_client_id;
+  
+  raise_application_error(-20999, 'Unit-test или API выполнены неверно');
+exception 
+  when client_data_api_pack.e_invalid_manual_changes then 
+     dbms_output.put_line('Обновление таблицы client_data не через API. Исключение возбуждено успешно. Ошибка: '|| sqlerrm);
+end;
+/
+
+-- Удаление не через API - клиентских данных
+declare
+  v_client_id        client.client_id%type := -1;
+begin
+  delete client_data c
+  where c.client_id = v_client_id;  
+                                          
+  raise_application_error(-20999, 'Unit-test или API выполнены неверно');
+exception 
+  when client_data_api_pack.e_invalid_manual_changes then 
+     dbms_output.put_line('Удаление из таблицы client_data не через API. Исключение возбуждено успешно. Ошибка: '|| sqlerrm);
 end;
 / 
